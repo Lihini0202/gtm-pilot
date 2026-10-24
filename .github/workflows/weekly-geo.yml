@@ -1,0 +1,36 @@
+# Weekly AI visibility run. The database is persisted as a workflow artifact.
+# Required secrets for live results: ANTHROPIC_API_KEY, OPENAI_API_KEY and/or GEMINI_API_KEY.
+# Without secrets the tracker runs in mock mode.
+name: Weekly GEO check
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"   # Mondays 03:17 UTC
+  workflow_dispatch:
+
+jobs:
+  geo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -e .
+      - name: Restore last week's database
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          name: gtm-db
+          path: data
+          if_no_artifact_found: warn
+      - name: Run tracker
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: gtm-pilot geo --industry Banking --industry Insurance --industry Healthcare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gtm-db
+          path: data/gtm_pilot.db
+          overwrite: true

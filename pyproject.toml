@@ -1,0 +1,30 @@
+[project]
+name = "gtm-pilot"
+version = "0.1.0"
+description = "AI tools for go-to-market teams: event lead cleanup and AI search (GEO) visibility tracking"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["requests>=2.31", "PyYAML>=6.0"]
+
+[project.optional-dependencies]
+dashboard = ["streamlit>=1.66", "pandas>=2.0"]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[project.scripts]
+gtm-pilot = "gtm_pilot.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["gtm_pilot*"]
+
+[tool.setuptools.package-data]
+gtm_pilot = ["geo/prompts.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120

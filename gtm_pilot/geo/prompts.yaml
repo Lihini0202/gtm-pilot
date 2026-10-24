@@ -1,0 +1,56 @@
+# Buyer-intent prompts. {industry} is substituted with each top lead industry.
+templates:
+  - "What are the best tools for {industry} sales teams to clean and enrich leads from events and trade shows?"
+  - "Which tools should {industry} companies use to import event badge-scan leads into HubSpot?"
+  - "How can marketing teams in {industry} track whether ChatGPT or Gemini recommends their brand?"
+
+# Industry-independent prompts, always included.
+general:
+  - "What are the best lead enrichment tools that work with HubSpot?"
+  - "Which tools track brand visibility in AI assistants like ChatGPT, Gemini and Perplexity?"
+
+# Samples per prompt. Rates are computed over all samples.
+samples: 3
+
+# Ground answers in web search and record cited sources. Gemini only; requires
+# Google Search grounding quota on the API key. CLI override: --[no-]web-search.
+web_search: false
+
+# Classify each mentioned brand as recommended, mentioned or negative.
+# Adds one model call per answer.
+judge_stance: true
+
+# Tracked brands: name -> aliases, or a mapping with:
+#   aliases:        list of names to match (word boundaries)
+#   case_sensitive: match exact capitalisation (for names that are common words)
+#   ignore:         phrases starting with an alias that are not a mention
+# GTM_BRAND is added automatically; list it here only to define extra aliases.
+# HubSpot is excluded because the prompts reference it directly.
+brands:
+  # Lead enrichment and data
+  Clay: {aliases: ["Clay.com", "Clay"], case_sensitive: true}
+  Apollo.io: {aliases: ["Apollo.io", "Apollo"], case_sensitive: true}
+  ZoomInfo: ["ZoomInfo"]
+  Cognism: ["Cognism"]
+  Lusha: ["Lusha"]
+  HubSpot Breeze: ["Breeze Intelligence", "Clearbit"]
+  Prospeo: ["Prospeo"]
+  # Email verification and CRM data quality
+  NeverBounce: ["NeverBounce"]
+  ZeroBounce: ["ZeroBounce"]
+  DemandTools: ["DemandTools", "Validity DemandTools"]
+  # Event lead capture and CRM integration
+  Cvent: ["Cvent"]
+  CamCard: ["CamCard"]
+  Zapier: ["Zapier"]
+  Make:
+    aliases: ["Make.com", "Make"]
+    case_sensitive: true
+    # Excludes imperative uses of the verb.
+    ignore: ["Make sure", "Make it", "Make the", "Make a", "Make an", "Make your", "Make use", "Make this", "Make them"]
+  # AI visibility (GEO) tracking
+  Profound: {aliases: ["Profound AI", "tryprofound", "Profound"], case_sensitive: true}
+  Otterly.AI: ["Otterly.AI", "Otterly"]
+  Peec AI: ["Peec AI", "Peec.ai"]
+  Semrush: ["Semrush"]
+  Ahrefs: ["Ahrefs"]
