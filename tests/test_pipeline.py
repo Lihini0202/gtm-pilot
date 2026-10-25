@@ -3,6 +3,7 @@
 import csv
 
 from gtm_pilot import cli
+from gtm_pilot.leads.clean import clean_email
 
 
 def test_full_run_in_mock_mode(tmp_path, monkeypatch):
@@ -23,8 +24,12 @@ def test_full_run_in_mock_mode(tmp_path, monkeypatch):
     assert {"gtm_industry", "gtm_seniority", "gtm_decision_maker", "gtm_event"} <= rows[0].keys()
 
     with open("raw.csv", newline="") as f:
-        declined = {r["Email"].strip().lower() for r in csv.DictReader(f) if r["Marketing Consent"] == "No"}
+        raw = list(csv.DictReader(f))
+    declined = {r["Email"].strip().lower() for r in raw if r["Marketing Consent"] == "No"}
+    opted_in = {clean_email(r["Email"])[0] for r in raw if r["Marketing Consent"] == "Yes"}  # typo-fixed like the pipeline
     assert declined and not declined & set(emails)  # opted-out contacts are excluded from the CRM file
+    assert any(r["Marketing Consent"] == "" for r in raw)
+    assert set(emails) <= opted_in  # contacts who never answered are excluded too
 
 
 def test_brand_comes_only_from_env(monkeypatch, tmp_path):

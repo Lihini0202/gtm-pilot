@@ -3,7 +3,7 @@
 HubSpot sync behaviour:
     * Empty values are never sent, so existing CRM data is not overwritten.
     * Only new contacts and changed properties are written.
-    * Contacts with consent == 'no' are excluded.
+    * Only contacts with consent == 'yes' are included; a blank answer is not consent.
     * `plan_upload` reports all changes without writing.
 """
 
@@ -98,8 +98,8 @@ def load_leads(conn: sqlite3.Connection) -> list[dict]:
 
 
 def consented(leads: list[dict]) -> list[dict]:
-    """Return leads eligible for CRM upload (consent is not 'no')."""
-    return [lead for lead in leads if lead.get("consent") != "no"]
+    """Return leads eligible for CRM upload (consent is 'yes'; blank or 'no' is excluded)."""
+    return [lead for lead in leads if lead.get("consent") == "yes"]
 
 
 def hubspot_properties(lead: dict) -> dict[str, str]:
@@ -234,6 +234,29 @@ def write_plan_csv(plan: list[dict], path: str | Path) -> Path:
     return p
 
 
+def _rejected_emails(r: requests.Response, emails: list[str]) -> set[str]:
+    """Return the emails HubSpot rejected in a batch response.
+
+    A 207 response means some inputs failed; its `errors` list names them in
+    `context.ids`. If errors cannot be matched to emails, the whole batch is
+    treated as failed so nothing is reported as uploaded by mistake.
+    """
+    if r.status_code != 207:
+        return set()
+    try:
+        errors = r.json().get("errors") or []
+    except ValueError:
+        return set(emails)
+    if not errors:
+        return set()
+    wanted = {e.lower(): e for e in emails}
+    ids = {str(i).lower() for err in errors for i in (err.get("context") or {}).get("ids", [])}
+    rejected = {wanted[i] for i in ids if i in wanted}
+    for err in errors:
+        log.warning("HubSpot rejected contacts: %s", str(err.get("message", ""))[:300])
+    return rejected or set(emails)
+
+
 @dataclass
 class UploadResult:
     """Outcome of upload_to_hubspot."""
@@ -261,13 +284,18 @@ def upload_to_hubspot(leads: list[dict], token: str, batch_size: int = 100, sess
         batch = todo[i : i + batch_size]
         body = {"inputs": [{"idProperty": "email", "id": p["email"], "properties": p["properties"]} for p in batch]}
         try:
-            _call(session, "POST", "/crm/v3/objects/contacts/batch/upsert", token, body)
+            r = _call(session, "POST", "/crm/v3/objects/contacts/batch/upsert", token, body)
         except HubSpotError as e:
             log.error("HubSpot batch %d skipped: %s", i // batch_size + 1, e)
             result.failed += [p["email"] for p in batch]
             continue
-        result.created += sum(1 for p in batch if p["action"] == "new")
-        result.updated += sum(1 for p in batch if p["action"] == "update")
+        rejected = _rejected_emails(r, [p["email"] for p in batch])
+        if rejected:
+            log.error("HubSpot batch %d: %d contacts rejected", i // batch_size + 1, len(rejected))
+            result.failed += [p["email"] for p in batch if p["email"] in rejected]
+        done = [p for p in batch if p["email"] not in rejected]
+        result.created += sum(1 for p in done if p["action"] == "new")
+        result.updated += sum(1 for p in done if p["action"] == "update")
     log.info("HubSpot: %d created, %d updated, %d unchanged, %d failed",
              result.created, result.updated, result.unchanged, len(result.failed))
     return result
