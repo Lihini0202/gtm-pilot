@@ -22,7 +22,7 @@ raw_leads.csv ─► clean ─► LLM enrich ─► SQLite ─► hubspot_import
 No API keys are required. Without keys, all commands use a deterministic offline provider (mock mode).
 
 ```bash
-git clone https://github.com/<you>/gtm-pilot && cd gtm-pilot
+git clone https://github.com/Lihini0202/gtm-pilot && cd gtm-pilot
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev,dashboard]"
 
@@ -37,7 +37,7 @@ Example output on the sample data:
 220 rows in -> 196 clean leads | 19 duplicates removed, 16 email typos fixed, 5 rejected
 Rejected rows saved to data/rejected_leads.csv for a human to check
 196 leads saved (91 decision makers). HubSpot import file: data/hubspot_import.csv
-15 leads declined marketing consent and are kept out of HubSpot
+40 leads are kept out of HubSpot without marketing consent (15 declined, 25 gave no answer)
 Checking AI visibility for lead industries: Banking, Healthcare, Insurance
 ```
 
@@ -177,7 +177,7 @@ dashboard/    Streamlit app
 tests/
 .github/workflows/
   ci.yml          ruff and pytest on pull requests (Python 3.11, 3.13)
-  weekly-geo.yml  scheduled weekly tracker run
+  weekly-geo.yml  scheduled weekly tracker run (set the GTM_BRAND repository variable)
 ```
 
 ## How I used Claude Code

@@ -52,7 +52,9 @@ def cmd_leads(args, settings) -> None:
     dms = sum(1 for lead in leads if lead.get("is_decision_maker"))
     print(f"{len(leads)} leads saved ({dms} decision makers). HubSpot import file: {out}")
     if len(crm_leads) < len(leads):
-        print(f"{len(leads) - len(crm_leads)} leads declined marketing consent and are kept out of HubSpot")
+        declined = sum(1 for lead in leads if lead.get("consent") == "no")
+        print(f"{len(leads) - len(crm_leads)} leads are kept out of HubSpot without marketing consent "
+              f"({declined} declined, {len(leads) - len(crm_leads) - declined} gave no answer)")
 
     if args.upload or args.dry_run:
         sync_hubspot(crm_leads, settings, args.dry_run, Path(args.out).with_name("hubspot_dry_run.csv"))

@@ -71,6 +71,22 @@ def test_saved_tags_are_per_model(conn):
     assert conn.execute("SELECT COUNT(*) FROM enrich_cache").fetchone()[0] == 2
 
 
+def test_invalid_answer_is_not_saved_and_is_asked_again(conn):
+    calls = []
+
+    class Wizard(LLMClient):
+        def complete_json(self, prompt, system=None):
+            calls.append(prompt)
+            return {"seniority": "Wizard", "industry": "Banking", "is_decision_maker": True}
+
+    leads = [{"email": "a@bank.lk", "job_title": "Chief Wizard", "company": "Big Bank"}]
+    out = enrich_leads(leads, Wizard("mock"), conn)
+    assert out[0]["seniority"] == "Individual Contributor"  # default still used for this run
+    assert conn.execute("SELECT COUNT(*) FROM enrich_cache").fetchone()[0] == 0
+    enrich_leads(leads, Wizard("mock"), conn)
+    assert len(calls) == 2
+
+
 def test_failed_tags_are_not_saved(conn):
     class Broken(LLMClient):
         def complete_json(self, prompt, system=None):

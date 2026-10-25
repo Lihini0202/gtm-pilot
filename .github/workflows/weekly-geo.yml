@@ -1,5 +1,6 @@
 # Weekly AI visibility run. The database is persisted as a workflow artifact.
 # Required secrets for live results: ANTHROPIC_API_KEY, OPENAI_API_KEY and/or GEMINI_API_KEY.
+# Set the GTM_BRAND repository variable (Settings -> Variables) to track your brand.
 # Without secrets the tracker runs in mock mode.
 name: Weekly GEO check
 
@@ -28,6 +29,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GTM_BRAND: ${{ vars.GTM_BRAND }}
         run: gtm-pilot geo --industry Banking --industry Insurance --industry Healthcare
       - uses: actions/upload-artifact@v4
         with:

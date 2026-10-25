@@ -1,7 +1,7 @@
 """LLM enrichment of leads: seniority, industry and decision-maker flag.
 
 Model output is validated against fixed value sets; invalid values are replaced
-with defaults and logged. Results are cached per model in the database.
+with defaults and logged. Valid results are cached per model in the database.
 """
 
 from __future__ import annotations
@@ -48,6 +48,11 @@ def validate(result: dict) -> dict:
     return {"seniority": seniority, "industry": industry, "is_decision_maker": dm}
 
 
+def _is_valid(result: dict) -> bool:
+    """True if the model's seniority and industry pass validation unchanged."""
+    return result.get("seniority") in SENIORITIES and result.get("industry") in INDUSTRIES
+
+
 def _saved_tags(conn: sqlite3.Connection | None, model: str, key: tuple) -> dict | None:
     if conn is None:
         return None
@@ -71,7 +76,7 @@ def enrich_leads(leads: list[dict], client: LLMClient, conn: sqlite3.Connection 
     """Return leads with enrichment fields added.
 
     With `conn`, cached results for the same model are reused and new results
-    are stored. Failed calls are not cached.
+    are stored. Failed calls and answers that needed defaults are not cached.
     """
     model = f"{client.provider}/{client.model}"
     out = []
@@ -86,8 +91,10 @@ def enrich_leads(leads: list[dict], client: LLMClient, conn: sqlite3.Connection 
             else:
                 calls += 1
                 try:
-                    cache[key] = validate(client.complete_json(build_prompt(lead), SYSTEM))
-                    _save_tags(conn, model, key, cache[key])
+                    result = client.complete_json(build_prompt(lead), SYSTEM)
+                    cache[key] = validate(result)
+                    if _is_valid(result):  # defaults are used for this run only, so a later run can retry
+                        _save_tags(conn, model, key, cache[key])
                 except LLMError as e:
                     log.error("Enrichment failed for %s: %s", lead["email"], e)
                     cache[key] = {"seniority": "", "industry": "", "is_decision_maker": False}

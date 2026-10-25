@@ -75,9 +75,9 @@ def test_csv_uses_lowercase_booleans(tmp_path):
     assert row["gtm_decision_maker"] == "true" and row["email"] == "a@x.com"
 
 
-def test_declined_consent_is_kept_out():
+def test_only_explicit_consent_goes_to_crm():
     leads = [lead("a@x.com"), lead("b@x.com", consent="no"), lead("c@x.com", consent="")]
-    assert [x["email"] for x in export.consented(leads)] == ["a@x.com", "c@x.com"]
+    assert [x["email"] for x in export.consented(leads)] == ["a@x.com"]
 
 
 def test_plan_shows_new_changed_and_unchanged():
@@ -138,6 +138,36 @@ def test_failed_batch_does_not_stop_the_rest(monkeypatch):
     leads = [lead(f"a{i}@x.com") for i in range(3)]
     result = export.upload_to_hubspot(leads, "tok", batch_size=2, session=hs)
     assert result.failed == ["a0@x.com", "a1@x.com"] and result.created == 1
+
+
+def test_partly_rejected_batch_reports_the_rejected_contacts(monkeypatch):
+    hs = FakeHubSpot()
+    real = hs.request
+
+    def partial(method, url, headers, json, timeout):
+        if url.endswith("/batch/upsert"):
+            return FakeResponse(207, {"status": "COMPLETE", "results": [{"id": "1"}], "errors": [
+                {"status": "error", "message": "Property values were not valid",
+                 "context": {"ids": ["A1@x.com", "a2@x.com"]}}]})
+        return real(method, url, headers, json, timeout)
+
+    monkeypatch.setattr(hs, "request", partial)
+    result = export.upload_to_hubspot([lead(f"a{i}@x.com") for i in range(3)], "tok", session=hs)
+    assert result.failed == ["a1@x.com", "a2@x.com"] and result.created == 1
+
+
+def test_unmatched_207_errors_fail_the_whole_batch(monkeypatch):
+    hs = FakeHubSpot()
+    real = hs.request
+
+    def partial(method, url, headers, json, timeout):
+        if url.endswith("/batch/upsert"):
+            return FakeResponse(207, {"errors": [{"message": "something went wrong"}]})
+        return real(method, url, headers, json, timeout)
+
+    monkeypatch.setattr(hs, "request", partial)
+    result = export.upload_to_hubspot([lead("a0@x.com"), lead("a1@x.com")], "tok", session=hs)
+    assert result.failed == ["a0@x.com", "a1@x.com"] and result.created == 0
 
 
 def test_auth_error_fails_fast_with_hubspot_message():
