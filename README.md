@@ -2,6 +2,10 @@
 
 Event-lead processing and AI search visibility tracking for go-to-market teams.
 
+[![Watch the 2½-minute demo](media/GTM_Pilot_thumbnail.jpg)](https://lihiniedirisingha.vercel.app/work/gtm-pilot.html)
+
+**[Demo video and case study](https://lihiniedirisingha.vercel.app/work/gtm-pilot.html)** · part of my [portfolio](https://lihiniedirisingha.vercel.app/#gtm)
+
 GTM Pilot answers two questions after an event:
 
 1. **Which leads matter?** A raw badge-scan export is cleaned, each lead is classified by seniority, industry and decision-maker status, and the result is exported to HubSpot.
